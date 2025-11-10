@@ -2,6 +2,31 @@
 
 Sistema de notificações para usuários usando Node.js, MongoDB e Redis.
 
+## 🚀 Quick Start
+
+```bash
+# 1. Clone e instale
+git clone <url-do-repo>
+cd notification-api
+npm install
+
+# 2. Configure ambiente
+cp .env.example .env
+
+# 3. Inicie Docker Desktop (Windows/Mac)
+
+# 4. Suba MongoDB e Redis
+docker-compose up -d mongo redis
+
+# 5. Inicie a aplicação
+npm start
+
+# 6. Teste no navegador
+# http://localhost:3000/api/health
+```
+
+Pronto! Agora pode testar no Postman/Insomnia 🎉
+
 ## Tecnologias
 
 - Node.js + Express
@@ -18,26 +43,54 @@ Sistema de notificações para usuários usando Node.js, MongoDB e Redis.
 
 ## Instalação e Execução
 
-### Com Docker (Recomendado)
+### Opção 1: Desenvolvimento Local com Docker (Recomendado para testar com Postman/Insomnia)
+
+Esta opção roda MongoDB e Redis no Docker, mas a aplicação localmente:
 
 ```bash
-# Clonar o repositório
+# 1. Clonar o repositório
 git clone <url-do-repo>
 cd notification-api
 
-# Copiar variáveis de ambiente
+# 2. Instalar dependências
+npm install
+
+# 3. Copiar variáveis de ambiente
 cp .env.example .env
 
-# Subir os containers
-docker-compose up -d
+# 4. Iniciar Docker Desktop (Windows/Mac)
 
-# Ver os logs
-docker-compose logs -f
+# 5. Subir apenas MongoDB e Redis
+docker-compose up -d mongo redis
+
+# 6. Iniciar a aplicação
+npm start
 ```
 
 A API estará disponível em `http://localhost:3000`
 
-### Sem Docker
+**Vantagens:**
+- Fácil de debugar e ver logs
+- Hot reload com `npm run dev`
+- Ideal para testar com Postman/Insomnia
+
+### Opção 2: Tudo no Docker
+
+Esta opção roda tudo containerizado (app + mongo + redis):
+
+```bash
+# Subir todos os containers
+docker-compose up -d
+
+# Ver os logs
+docker-compose logs -f app
+```
+
+**Nota:** Com esta opção, você **não** pode rodar `npm start` localmente pois a porta 3000 já estará em uso pelo container.
+
+### Opção 3: Sem Docker
+
+Apenas se você já tiver MongoDB e Redis instalados localmente:
 
 ```bash
 # Instalar dependências
@@ -47,12 +100,54 @@ npm install
 cp .env.example .env
 # Edite o .env com suas credenciais do MongoDB e Redis
 
-# Rodar em desenvolvimento
-npm run dev
+# Iniciar MongoDB (terminal separado)
+mongod
 
-# Ou em produção
+# Iniciar Redis (terminal separado)
+redis-server
+
+# Rodar aplicação
 npm start
 ```
+
+## Testando com Postman/Insomnia
+
+### Passo a passo rápido:
+
+1. **Certifique-se que tudo está rodando:**
+   ```bash
+   # Verificar containers
+   docker ps
+   # Deve mostrar: notification-api-mongo-1 e notification-api-redis-1
+   
+   # Verificar se a API está respondendo
+   curl http://localhost:3000/api/health
+   ```
+
+2. **Registrar um usuário:**
+   - Método: `POST`
+   - URL: `http://localhost:3000/api/auth/register`
+   - Body (JSON):
+     ```json
+     {
+       "name": "Seu Nome",
+       "email": "seu@email.com",
+       "password": "senha123"
+     }
+     ```
+   - ✅ Copie o `token` da resposta
+
+3. **Configurar autenticação:**
+   - No Postman/Insomnia, adicione um header:
+   - `Authorization: Bearer SEU_TOKEN_AQUI`
+
+4. **Testar endpoints de notificações:**
+   - Criar: `POST /api/notifications`
+   - Listar: `GET /api/notifications`
+   - Contar não lidas: `GET /api/notifications/unread-count`
+   - Marcar como lida: `PATCH /api/notifications/{id}/read`
+
+**Dica:** Todos os exemplos de curl abaixo podem ser copiados direto para o terminal ou importados no Postman/Insomnia.
 
 ## Executando os Testes
 
@@ -66,6 +161,8 @@ npm run test:coverage
 # Modo watch
 npm run test:watch
 ```
+
+**Nota:** Os testes usam banco de dados em memória, não precisa do Docker rodando.
 
 ## Documentação da API
 
@@ -365,6 +462,59 @@ FLUSHALL  # Cuidado: limpa tudo!
 
 ## Troubleshooting
 
+### Erro "Server returned nothing" no Postman/Insomnia
+
+**Causa:** O servidor não está rodando.
+
+**Solução:**
+```bash
+# 1. Verificar se há processo na porta 3000
+# Windows PowerShell:
+netstat -ano | findstr :3000
+
+# 2. Se houver, matar o processo (substitua PID):
+taskkill /PID <PID> /F
+
+# 3. Iniciar o servidor
+npm start
+```
+
+### Erro "EADDRINUSE: address already in use :::3000"
+
+**Causa:** Já tem algo rodando na porta 3000 (provavelmente o container do Docker ou outro processo Node).
+
+**Solução:**
+```bash
+# Se estiver usando Docker, pare o container da app:
+docker-compose stop app
+
+# Ou mate o processo manualmente (Windows):
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+
+# Depois inicie novamente:
+npm start
+```
+
+### MongoDB não conecta (ECONNREFUSED 127.0.0.1:27017)
+
+**Causa:** MongoDB não está rodando ou Docker Desktop não iniciou.
+
+**Solução:**
+```bash
+# 1. Verificar se Docker Desktop está rodando (Windows/Mac)
+#    Abra o Docker Desktop e aguarde inicializar
+
+# 2. Verificar containers
+docker ps
+
+# 3. Se não aparecer mongo, subir containers:
+docker-compose up -d mongo redis
+
+# 4. Verificar logs
+docker-compose logs mongo
+```
+
 ### Aplicação não inicia
 
 ```bash
@@ -373,16 +523,6 @@ docker-compose logs app
 
 # Verificar status dos containers
 docker-compose ps
-```
-
-### MongoDB não conecta
-
-```bash
-# Ver logs do MongoDB
-docker-compose logs mongo
-
-# Verificar se está rodando
-docker-compose ps mongo
 ```
 
 ### Redis não conecta
